@@ -1,0 +1,268 @@
+datasource db {
+  provider = "mysql" // ou "postgresql", etc.
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==================== CPU ====================
+model CPU {
+  id            Int      @id @default(autoincrement())
+  name          String
+  watt          Int
+  price         Decimal   @default(0.0)
+  link          String?
+  image         String?
+  brand         CPUBrand
+  cores         Int
+  threads       Int
+  socket        String
+  frequency     String
+  integratedGPU Boolean
+
+  Build Build[] 
+}
+
+enum CPUBrand {
+  AMD
+  Intel
+}
+
+// ==================== GPU ====================
+model GPU {
+  id         Int       @id @default(autoincrement())
+  name       String
+  watt       Int
+  price      Decimal   @default(0.0)
+  link       String?
+  image      String?
+  brand      GPUBrand
+  vramGB     Int
+  chipset    String
+  pciVersion String
+
+  Build Build[]
+}
+
+enum GPUBrand {
+  AMD
+  NVIDIA
+}
+
+// ==================== Motherboard ====================
+model Motherboard {
+  id               Int         @id @default(autoincrement())
+  name             String
+  watt             Int
+  price            Decimal      @default(0.0)
+  link             String?
+  image            String?
+  brand            String
+  socket           String
+  chipset          String
+  formFactor       FormFactor
+  wifi             Boolean
+  wifiVersion      String?
+  bluetooth        Boolean
+  bluetoothVersion String?
+  nvmeSlots        Int
+
+  Build Build[]
+}
+
+enum FormFactor {
+  ATX
+  MicroATX
+  MiniITX
+}
+
+// ==================== PSU ====================
+model PSU {
+  id            Int          @id @default(autoincrement())
+  name          String
+  price         Decimal      @default(0.0)
+  link          String?
+  image         String?
+  brand         String
+  power         Int          
+  certification String
+  modular       ModularType
+
+  Build Build[]
+}
+
+enum ModularType {
+  Modular
+  SemiModular
+  NotModular
+}
+
+// ==================== RAM ====================
+model RAM {
+  id         Int     @id @default(autoincrement())
+  name       String
+  watt       Int
+  price      Decimal @default(0.0)
+  link       String?
+  image      String?
+  brand      String
+  capacityGB Int
+  speedMHz   Int
+  type       RAMType
+
+  // Table pivot => BuildRAM
+  buildRams BuildRAM[]
+}
+
+enum RAMType {
+  DDR4
+  DDR5
+}
+
+// ==================== Storage ====================
+model Storage {
+  id         Int         @id @default(autoincrement())
+  name       String
+  watt       Int
+  price      Decimal      @default(0.0)
+  link       String?
+  image      String?
+  brand      String
+  capacityGB Int
+  speed      Int
+  pci        String?
+  type       StorageType
+
+  buildStorages BuildStorage[]
+}
+
+enum StorageType {
+  HDD
+  SSD
+  NVMe
+}
+
+// ==================== Monitor ====================
+model Monitor {
+  id            Int        @id @default(autoincrement())
+  name          String
+  watt          Int
+  price         Decimal     @default(0.0)
+  link          String?
+  image         String?
+  brand         String
+  sizeInches    Int
+  resolution    String
+  refreshRateHz Int
+  panel         PanelType
+
+  buildMonitors BuildMonitor[]
+}
+
+enum PanelType {
+  OLED
+  VA
+  TN
+  IPS
+}
+
+
+// ==================== Case ====================
+model Case {
+  id      Int     @id @default(autoincrement())
+  name    String
+  price   Decimal @default(0.0)
+  link    String?
+  image   String?
+  brand   String?
+
+  build   Build[] 
+}
+
+// ==================== Other ====================
+model Other {
+  id       Int     @id @default(autoincrement())
+  name     String
+  watt     Int
+  price    Decimal @default(0.0)
+  link     String?
+  image    String?
+  category String
+  brand    String
+
+  buildOthers BuildOther[]
+}
+
+// ==================== Build ====================
+model Build {
+  id            Int          @id @default(autoincrement())
+  shareCode     String       @unique
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Liens 1-1
+  cpuId         Int?
+  cpu           CPU?         @relation(fields: [cpuId], references: [id])
+
+  gpuId         Int?
+  gpu           GPU?         @relation(fields: [gpuId], references: [id])
+
+  motherboardId Int?
+  motherboard   Motherboard? @relation(fields: [motherboardId], references: [id])
+
+  psuId         Int?
+  psu           PSU?         @relation(fields: [psuId], references: [id])
+
+  caseId  Int?
+  case    Case?   @relation(fields: [caseId], references: [id])
+
+  // Tables pivot => On n'a plus rams: RAM[], etc.
+  buildRams      BuildRAM[]
+  buildStorages  BuildStorage[]
+  buildMonitors  BuildMonitor[]
+  buildOthers    BuildOther[]
+}
+
+// ==================== Pivot Tables ====================
+
+model BuildRAM {
+  buildId Int
+  ramId   Int
+
+  build Build @relation(fields: [buildId], references: [id])
+  ram   RAM   @relation(fields: [ramId], references: [id])
+
+  @@id([buildId, ramId])
+}
+
+model BuildStorage {
+  buildId   Int
+  storageId Int
+
+  build   Build    @relation(fields: [buildId], references: [id])
+  storage Storage  @relation(fields: [storageId], references: [id])
+
+  @@id([buildId, storageId])
+}
+
+model BuildMonitor {
+  buildId   Int
+  monitorId Int
+
+  build   Build    @relation(fields: [buildId], references: [id])
+  monitor Monitor  @relation(fields: [monitorId], references: [id])
+
+  @@id([buildId, monitorId])
+}
+
+model BuildOther {
+  buildId Int
+  otherId Int
+
+  build Build @relation(fields: [buildId], references: [id])
+  other Other @relation(fields: [otherId], references: [id])
+
+  @@id([buildId, otherId])
+}
